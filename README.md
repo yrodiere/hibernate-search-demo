@@ -16,5 +16,5 @@ docker run --ulimit memlock=-1:-1 -it --rm=true --memory-swappiness=0 --name pos
 ## Start your Elasticsearch cluster
 
 ```
-docker run -it --rm=true --name elasticsearch_quarkus_test -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.0.1
+docker run -it --rm=true --name elasticsearch_quarkus_test -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:7.5.1
 ```
