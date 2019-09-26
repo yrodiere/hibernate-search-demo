@@ -2,6 +2,9 @@ package org.acme.hibernate.search.demo;
 
 import java.util.List;
 
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
 import javax.transaction.Transactional;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -12,11 +15,30 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
 import org.acme.hibernate.search.demo.model.Author;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.hibernate.search.mapper.orm.Search;
+
+import io.quarkus.runtime.StartupEvent;
 
 @Path("/library")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class LibraryResource {
+
+	@Inject
+	EntityManager entityManager;
+
+	@ConfigProperty(name = "org.acme.hibernate.search.force-reindex", defaultValue = "true")
+	boolean forceReindex;
+
+	@Transactional
+	public void reindex(@Observes StartupEvent event) throws InterruptedException {
+		if (forceReindex) {
+			Search.session(entityManager)
+					.massIndexer()
+					.startAndWait();
+		}
+	}
 
 	@PUT
 	@Path("author")
@@ -29,6 +51,12 @@ public class LibraryResource {
 	@Path("author/search")
 	@Transactional
 	public List<Author> searchAuthor(@QueryParam("pattern") String pattern) {
-		return Author.listAll();
+		return Search.session(entityManager)
+				.search(Author.class)
+				.where(f -> pattern == null || pattern.isEmpty() ?
+						f.matchAll() :
+						f.simpleQueryString().fields("firstName", "lastName", "books.title").matching(pattern))
+				.sort(s -> s.field("lastName_sort").then().field("firstName_sort"))
+				.fetchAllHits();
 	}
 }
